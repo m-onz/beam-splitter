@@ -1,0 +1,27 @@
+{
+  "name": "beam-splitter",
+  "version": "0.0.1",
+  "description": "cli tool that encrypts a file & splits it into chunks, also re-assembles chunks using a password",
+  "main": "bin.js",
+  "scripts": {
+    "test": "echo \"no tests yet\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m-onz/beam-splitter.git"
+  },
+  "keywords": [
+    "encrypt",
+    "split",
+    "reconstruct"
+  ],
+  "author": "@m-onz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/m-onz/beam-splitter/issues"
+  },
+  "homepage": "https://github.com/m-onz/beam-splitter#readme",
+  "dependencies": {
+    "minimist": "^1.2.5"
+  }
+}
