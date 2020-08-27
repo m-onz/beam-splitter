@@ -30,11 +30,13 @@ var fs = require('fs')
 
 var instructions = 'beam-splitter --export ./<>.zip --password <> OR beam-splitter --import ./folder --password <>'
 
+var ALGORITHM = 'blowfish'
+
 var ALLOWED_FLAGS = [ 'import', 'export', 'password', '_' ]
 
-var password = false
-if(argv.hasOwnProperty('password')) password = argv.password
-if (!password) throw Error ('needs a password eg --password pass123')
+var PASSWORD = false
+if(argv.hasOwnProperty('password')) PASSWORD = argv.password
+if (!PASSWORD) throw Error ('needs a password eg --password pass123')
 
 var IMPORT = false
 var EXPORT = false
@@ -66,23 +68,31 @@ function hash (thing) {
 
 switch(mode) {
   case 'EXPORT':
-    var file = Buffer.from(fs.readFileSync(EXPORT))
-    console.log('input file: ', EXPORT, 'file hash', hash(file))
-    var chunks = split(file, 1024 * 1024) // 1MB chunks
-    mkdirp.sync(EXPORT+'_output')
-    chunks.forEach(function (chunk, index) {
-      assert.ok(Buffer.isBuffer(chunk))
-      fs.writeFileSync(
-        EXPORT+
-        '_output/'+
-        hash(chunk)+
-        '_'+index,
-        chunk, {
-          encoding: null
+    var cipher = crypto.createCipher(ALGORITHM, PASSWORD)
+    var input = fs.createReadStream(EXPORT)
+    input.pipe(cipher).pipe(fs.createWriteStream(EXPORT+'.enc'))
+      .on('finish', function () {
+        console.log('do the export......')
+        var file = Buffer.from(fs.readFileSync(EXPORT+'.enc'))
+        console.log('input file: ', EXPORT, 'file hash', hash(file))
+        var chunks = split(file, 1024 * 1024) // 1MB chunks
+        mkdirp.sync(EXPORT+'_output')
+        chunks.forEach(function (chunk, index) {
+          assert.ok(Buffer.isBuffer(chunk))
+          fs.writeFileSync(
+            EXPORT+
+            '_output/'+
+            hash(chunk)+
+            '_'+index,
+            chunk, {
+              encoding: null
+            })
         })
     })
   break;
   case 'IMPORT':
+    var decipher = crypto.createDecipher(ALGORITHM, PASSWORD);
+
     var dir = fs.readdirSync(IMPORT)
     var chunks_length = dir.length
     var reconstruct = new Array(chunks_length)
@@ -92,10 +102,12 @@ switch(mode) {
     })
     var reconstructed = Buffer.concat(reconstruct)
     fs.writeFileSync(
-      IMPORT+'_reconstructed.zip', // hardcoded extension, I am testing a zip folder
+      IMPORT+'_reconstructed.dec', // hardcoded extension, I am testing a zip folder
       reconstructed, {
         encoding: null
       })
+    var decrypted = fs.createReadStream(IMPORT+'_reconstructed.dec')
+    decrypted.pipe(decipher).pipe(fs.createWriteStream('output.zip'))
   break;
   default:
     throw Error('you must either import or export')
