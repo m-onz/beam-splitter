@@ -1,57 +1,49 @@
 #!/usr/bin/env node
 
-/*
+var instructions = `
 
   88""Yb 888888    db    8b    d8          .dP"Y8 88""Yb 88     88 888888 888888 888888 88""Yb
-  88__dP 88__     dPYb   88b  d88 ________ `Ybo." 88__dP 88     88   88     88   88__   88__dP
-  88""Yb 88""    dP__Yb  88YbdP88 """""""" o.`Y8b 88"""  88  .o 88   88     88   88""   88"Yb
+  88__dP 88__     dPYb   88b  d88 ________ \`Ybo." 88__dP 88     88   88     88   88__   88__dP
+  88""Yb 88""    dP__Yb  88YbdP88 """""""" o.\`Y8b 88"""  88  .o 88   88     88   88""   88"Yb
   88oodP 888888 dP""""Yb 88 YY 88          8bodP' 88     88ood8 88   88     88   888888 88  Yb
 
 
   cli tool that encrypts a file & splits it into chunks, also re-assembles chunks using a password
 
-  prototyping... with demo.zip test zip folder
-
-  node bin.js --export demo.zip --password pass
-  node bin.js --import ./demo.zip_output --password pass
-
-  make sure the reconstructed zip folder successfully extracts or things are deffinitely broken!
+  beam-splitter --export demo.zip --password pass
+  beam-splitter --import ./demo.zip_output --password pass
 
   @m-onz
 
-*/
+`
 
 var argv = require('minimist')(process.argv.slice(2))
-var crypto = require('crypto')
 var split = require('split-buffer')
+var crypto = require('crypto')
 var mkdirp = require('mkdirp')
 var assert = require('assert')
+var path = require('path')
 var fs = require('fs')
 
-var instructions = 'beam-splitter --export ./<>.zip --password <> OR beam-splitter --import ./folder --password <>'
-
 var ALGORITHM = 'blowfish'
-
 var ALLOWED_FLAGS = [ 'import', 'export', 'password', '_' ]
-
 var PASSWORD = false
-if(argv.hasOwnProperty('password')) PASSWORD = argv.password
-if (!PASSWORD) throw Error ('needs a password eg --password pass123')
-
 var IMPORT = false
 var EXPORT = false
+
 var mode = 'IMPORT'
+if (argv.hasOwnProperty('password')) PASSWORD = argv.password
 
 if (argv.hasOwnProperty('import')) {
   IMPORT = argv.import
   mode = 'IMPORT'
-}
-
-if (argv.hasOwnProperty('export')) {
+} else if (argv.hasOwnProperty('export')) {
   EXPORT = argv.export
   mode = 'EXPORT'
+} else {
+  return console.log(instructions)
 }
-
+if (!PASSWORD) throw Error ('needs a password eg --password pass123')
 if (IMPORT && EXPORT) {
   throw Error('you cannot import and export at the same time!')
 }
@@ -60,7 +52,7 @@ Object.keys(argv).forEach(function (key) {
   if (!ALLOWED_FLAGS.includes(key)) throw Error('I do not recognize... '+key)
 })
 
-function hash (thing) {
+function hashSHA256 (thing) {
   var hash = crypto.createHash('sha256')
   hash.update(thing)
   return hash.digest('hex')
@@ -68,22 +60,23 @@ function hash (thing) {
 
 switch(mode) {
   case 'EXPORT':
+    console.log('beam-splitter :: exporting ', EXPORT)
     var cipher = crypto.createCipher(ALGORITHM, PASSWORD)
-    var input = fs.createReadStream(EXPORT)
+    var input = fs.createReadStream(path.normalize(EXPORT))
     input.pipe(cipher).pipe(fs.createWriteStream(EXPORT+'.enc'))
       .on('finish', function () {
-        console.log('do the export......')
         var file = Buffer.from(fs.readFileSync(EXPORT+'.enc'))
-        console.log('input file: ', EXPORT, 'file hash', hash(file))
+        fs.unlinkSync(EXPORT+'.enc')
+        console.log('input file: ', EXPORT, 'file hash', hashSHA256(file))
         var chunks = split(file, 1024 * 1024) // 1MB chunks
         mkdirp.sync(EXPORT+'_output')
         chunks.forEach(function (chunk, index) {
           assert.ok(Buffer.isBuffer(chunk))
+          console.log('<chunk> '+hashSHA256(chunk))
+          // will create seemingly broken png images
+          var outpath = EXPORT+'_output/'+hashSHA256(chunk)+'_'+index+'_.png';
           fs.writeFileSync(
-            EXPORT+
-            '_output/'+
-            hash(chunk)+
-            '_'+index,
+            path.normalize(outpath),
             chunk, {
               encoding: null
             })
@@ -91,26 +84,33 @@ switch(mode) {
     })
   break;
   case 'IMPORT':
+    console.log('beam-splitter :: importing ', IMPORT)
     var decipher = crypto.createDecipher(ALGORITHM, PASSWORD);
-
-    var dir = fs.readdirSync(IMPORT)
+    var dir = fs.readdirSync(path.normalize(IMPORT))
     var chunks_length = dir.length
     var reconstruct = new Array(chunks_length)
-    fs.readdirSync(IMPORT).forEach(function (path) {
-      var index = parseInt(path.split('_')[1])
-      reconstruct[index] = fs.readFileSync(IMPORT+'/'+path)
+    fs.readdirSync(path.normalize(IMPORT)).forEach(function (_path) {
+      var index = parseInt(_path.split('_')[1])
+      var hash = _path.split('_')[0]
+      var file = fs.readFileSync(path.normalize(path.join(IMPORT, _path)))
+      console.log('<chunk> ', hash)
+      if (hashSHA256(file) === hash) reconstruct[index] = file
+        else throw Error('data integrity check failed')
     })
     var reconstructed = Buffer.concat(reconstruct)
     fs.writeFileSync(
-      IMPORT+'_reconstructed.dec', // hardcoded extension, I am testing a zip folder
+      IMPORT+'_reconstructed.dec',
       reconstructed, {
         encoding: null
       })
-    var decrypted = fs.createReadStream(IMPORT+'_reconstructed.dec')
-    decrypted.pipe(decipher).pipe(fs.createWriteStream('output.zip'))
+    var decrypted = fs.createReadStream(path.normalize(IMPORT+'_reconstructed.dec'))
+    decrypted.pipe(decipher).pipe(fs.createWriteStream(path.normalize(IMPORT+'_reconstructed.zip')))
+      .on('finish', function () {
+        fs.unlinkSync(path.normalize(IMPORT+'_reconstructed.dec'))
+      })
   break;
   default:
     throw Error('you must either import or export')
 }
 
-// ---- ---- ---- ---- ----
+// ---- ---- ---- ---- ---- end of file.
