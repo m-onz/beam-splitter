@@ -69,12 +69,11 @@ switch(mode) {
         var file = Buffer.from(fs.readFileSync(temp_path))
         fs.unlinkSync(temp_path)
         console.log('input file: ', EXPORT, 'file hash', hashSHA256(file))
-        var chunks = split(file, 1024 * 1024) // 1MB chunks
+        var chunks = split(file, 1024 * 1024)
         mkdirp.sync(EXPORT+'_output')
         chunks.forEach(function (chunk, index) {
           assert.ok(Buffer.isBuffer(chunk))
           console.log('<chunk> ', hashSHA256(chunk))
-          // will create seemingly broken png images
           var outpath = path.join(EXPORT+'_output/', hashSHA256(chunk)+'_'+index+'_.png')
           fs.writeFileSync(
             path.normalize(outpath),
@@ -101,7 +100,6 @@ switch(mode) {
         else throw Error('data integrity check failed')
     })
     var reconstructed = Buffer.concat(reconstruct)
-    console.log(reconstructed.length, '........')
     var temp_path = path.normalize(path.join(process.cwd(), 'temp.dec'))
     fs.writeFileSync(
       temp_path,
@@ -118,5 +116,3 @@ switch(mode) {
   default:
     throw Error('you must either import or export')
 }
-
-// ---- ---- ---- ---- ---- end of file.
