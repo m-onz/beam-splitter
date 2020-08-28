@@ -1,5 +1,7 @@
 # `beam-splitter`
 
+<img src="splitter.png" />
+
 cli tool that encrypts a file &amp; splits it into chunks, also re-assembles chunks using a password.
 This is useful for me and designed to work on a specific (and quite low) version of node.
 Comments, PRs and suggestions are welcome.
