@@ -63,18 +63,19 @@ switch(mode) {
     console.log('beam-splitter :: exporting ', EXPORT)
     var cipher = crypto.createCipher(ALGORITHM, PASSWORD)
     var input = fs.createReadStream(path.normalize(EXPORT))
-    input.pipe(cipher).pipe(fs.createWriteStream(EXPORT+'.enc'))
+    var temp_path = path.join(process.cwd(), 'temp.enc')
+    input.pipe(cipher).pipe(fs.createWriteStream(temp_path))
       .on('finish', function () {
-        var file = Buffer.from(fs.readFileSync(EXPORT+'.enc'))
-        fs.unlinkSync(path.normalize(EXPORT+'.enc'))
+        var file = Buffer.from(fs.readFileSync(temp_path))
+        fs.unlinkSync(temp_path)
         console.log('input file: ', EXPORT, 'file hash', hashSHA256(file))
         var chunks = split(file, 1024 * 1024) // 1MB chunks
         mkdirp.sync(EXPORT+'_output')
         chunks.forEach(function (chunk, index) {
           assert.ok(Buffer.isBuffer(chunk))
-          console.log('<chunk> '+hashSHA256(chunk))
+          console.log('<chunk> ', hashSHA256(chunk))
           // will create seemingly broken png images
-          var outpath = EXPORT+'_output/'+hashSHA256(chunk)+'_'+index+'_.png';
+          var outpath = path.join(EXPORT+'_output/', hashSHA256(chunk)+'_'+index+'_.png')
           fs.writeFileSync(
             path.normalize(outpath),
             chunk, {
@@ -85,11 +86,13 @@ switch(mode) {
   break;
   case 'IMPORT':
     console.log('beam-splitter :: importing ', IMPORT)
+    var extension = IMPORT.split('.')
+    extension = extension[extension.length-1].split('_output')[0]
     var decipher = crypto.createDecipher(ALGORITHM, PASSWORD);
     var dir = fs.readdirSync(path.normalize(IMPORT))
     var chunks_length = dir.length
     var reconstruct = new Array(chunks_length)
-    fs.readdirSync(path.normalize(IMPORT)).forEach(function (_path) {
+    dir.forEach(function (_path) {
       var index = parseInt(_path.split('_')[1])
       var hash = _path.split('_')[0]
       var file = fs.readFileSync(path.normalize(path.join(IMPORT, _path)))
@@ -98,15 +101,18 @@ switch(mode) {
         else throw Error('data integrity check failed')
     })
     var reconstructed = Buffer.concat(reconstruct)
+    console.log(reconstructed.length, '........')
+    var temp_path = path.normalize(path.join(process.cwd(), 'temp.dec'))
     fs.writeFileSync(
-      IMPORT+'_reconstructed.dec',
+      temp_path,
       reconstructed, {
         encoding: null
       })
-    var decrypted = fs.createReadStream(path.normalize(IMPORT+'_reconstructed.dec'))
-    decrypted.pipe(decipher).pipe(fs.createWriteStream(path.normalize(IMPORT+'_reconstructed.zip')))
+    var decrypted = fs.createReadStream(temp_path)
+    var reconstructed = path.normalize(path.join(process.cwd(), 'reconstructed.'+extension))
+    decrypted.pipe(decipher).pipe(fs.createWriteStream(reconstructed))
       .on('finish', function () {
-        fs.unlinkSync(path.normalize(IMPORT+'_reconstructed.dec'))
+        fs.unlinkSync(temp_path)
       })
   break;
   default:
