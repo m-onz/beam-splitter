@@ -66,7 +66,7 @@ switch(mode) {
     input.pipe(cipher).pipe(fs.createWriteStream(EXPORT+'.enc'))
       .on('finish', function () {
         var file = Buffer.from(fs.readFileSync(EXPORT+'.enc'))
-        fs.unlinkSync(EXPORT+'.enc')
+        fs.unlinkSync(path.normalize(EXPORT+'.enc'))
         console.log('input file: ', EXPORT, 'file hash', hashSHA256(file))
         var chunks = split(file, 1024 * 1024) // 1MB chunks
         mkdirp.sync(EXPORT+'_output')

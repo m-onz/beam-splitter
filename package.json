@@ -1,6 +1,6 @@
 {
   "name": "@yaus/beam-splitter",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "cli tool that encrypts a file & splits it into chunks, also re-assembles chunks using a password",
   "repository": {
     "type": "git",
