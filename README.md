@@ -26,7 +26,7 @@ You supply a folder and password and it re-assembles the file and decrypts it.
 ## `example output`
 
 ```
-beam-splitter :: importing  .\tagmaker.zip_output\
+beam-splitter :: importing  .\demo.zip_output\
 <chunk>  06abb373fceabd07ef21f5113836f5e2d095fd5749fe026c8216c2295359530a
 <chunk>  0efea96c17ae7dd9522c8a502bc4dbae6f1afe6800d6ac51138ff6f76d6d1768
 <chunk>  10c6c78d5d4c37579bf84d43da4b059c26fee8ca24e44059d298489c80f7dff8
