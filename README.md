@@ -11,5 +11,5 @@ beam-splitter --import ./demo.zip_output --password pass
 
 ## `install`
 ```
-npm i beam-splitter -g
+npm i @yaus/beam-splitter -g
 ```
